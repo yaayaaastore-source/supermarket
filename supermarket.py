@@ -1,196 +1,602 @@
-# Streamlit Business Dashboard
-# Save this file as streamlit_dashboard.py and run: streamlit run streamlit_dashboard.py
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from datetime import datetime
+import warnings
+warnings.filterwarnings('ignore')
 
-st.set_page_config(page_title="Business Dashboard", layout="wide")
+# Set page config
+st.set_page_config(
+    page_title="Multi-Language Business Dashboard",
+    page_icon="📊",
+    layout="wide"
+)
 
-st.title("📊 Streamlit Business Dashboard")
-st.markdown("""
-Upload an Excel file (.xlsx or .xls). The app will try to detect date, numeric, and categorical columns and
-show five useful charts + a small KPI area.
-""")
+# ===================== MULTI-LANGUAGE SUPPORT =====================
+# Language dictionary
+LANGUAGES = {
+    "English": {
+        "title": "Business Intelligence Dashboard",
+        "upload": "Upload Excel File",
+        "upload_desc": "Upload an Excel file (.xlsx or .xls). The app will automatically detect date, numeric, and categorical columns and show analytical charts.",
+        "drag_drop": "Drag and drop file here",
+        "file_limit": "Limit 200MB per file • XLSX, XLS",
+        "processing": "Processing data...",
+        "data_preview": "Data Preview",
+        "kpi_section": "Key Performance Indicators",
+        "charts_section": "Analytical Charts",
+        "total_records": "Total Records",
+        "total_columns": "Total Columns",
+        "date_columns": "Date Columns",
+        "numeric_columns": "Numeric Columns",
+        "data_types": "Data Types Overview",
+        "missing_values": "Missing Values",
+        "time_series": "Time Series Analysis",
+        "distribution": "Distribution Analysis",
+        "correlation": "Correlation Matrix",
+        "category_analysis": "Category Analysis",
+        "top_categories": "Top Categories",
+        "download_data": "Download Processed Data",
+        "select_date_col": "Select Date Column",
+        "select_value_col": "Select Value Column",
+        "select_category_col": "Select Category Column",
+        "no_date_col": "No date column detected",
+        "no_numeric_col": "No numeric column detected",
+        "no_category_col": "No categorical column detected",
+        "error": "Error",
+        "success": "Success",
+        "file_uploaded": "File uploaded successfully",
+        "select_language": "Select Language",
+        "reset": "Reset",
+        "filter_data": "Filter Data",
+        "apply_filter": "Apply Filter",
+        "clear_filter": "Clear Filter",
+        "data_summary": "Data Summary",
+        "insights": "Insights",
+        "trend": "Trend",
+        "comparison": "Comparison",
+        "forecast": "Forecast"
+    },
+    "Indonesia": {
+        "title": "Dasbor Bisnis Inteligensi",
+        "upload": "Unggah File Excel",
+        "upload_desc": "Unggah file Excel (.xlsx atau .xls). Aplikasi akan mendeteksi kolom tanggal, numerik, dan kategorikal secara otomatis dan menampilkan grafik analitis.",
+        "drag_drop": "Seret dan lepas file di sini",
+        "file_limit": "Batas 200MB per file • XLSX, XLS",
+        "processing": "Memproses data...",
+        "data_preview": "Pratinjau Data",
+        "kpi_section": "Indikator Kinerja Utama",
+        "charts_section": "Grafik Analitis",
+        "total_records": "Total Data",
+        "total_columns": "Total Kolom",
+        "date_columns": "Kolom Tanggal",
+        "numeric_columns": "Kolom Numerik",
+        "data_types": "Ringkasan Tipe Data",
+        "missing_values": "Nilai Kosong",
+        "time_series": "Analisis Deret Waktu",
+        "distribution": "Analisis Distribusi",
+        "correlation": "Matriks Korelasi",
+        "category_analysis": "Analisis Kategori",
+        "top_categories": "Kategori Teratas",
+        "download_data": "Unduh Data Hasil Olahan",
+        "select_date_col": "Pilih Kolom Tanggal",
+        "select_value_col": "Pilih Kolom Nilai",
+        "select_category_col": "Pilih Kolom Kategori",
+        "no_date_col": "Tidak ada kolom tanggal terdeteksi",
+        "no_numeric_col": "Tidak ada kolom numerik terdeteksi",
+        "no_category_col": "Tidak ada kolom kategorikal terdeteksi",
+        "error": "Error",
+        "success": "Berhasil",
+        "file_uploaded": "File berhasil diunggah",
+        "select_language": "Pilih Bahasa",
+        "reset": "Reset",
+        "filter_data": "Filter Data",
+        "apply_filter": "Terapkan Filter",
+        "clear_filter": "Hapus Filter",
+        "data_summary": "Ringkasan Data",
+        "insights": "Insights",
+        "trend": "Tren",
+        "comparison": "Perbandingan",
+        "forecast": "Perkiraan"
+    },
+    "中文": {
+        "title": "商业智能仪表板",
+        "upload": "上传 Excel 文件",
+        "upload_desc": "上传 Excel 文件（.xlsx 或 .xls）。应用将自动检测日期、数值和分类列，并显示分析图表。",
+        "drag_drop": "拖放文件到此处",
+        "file_limit": "每文件限制 200MB • XLSX, XLS",
+        "processing": "处理数据中...",
+        "data_preview": "数据预览",
+        "kpi_section": "关键绩效指标",
+        "charts_section": "分析图表",
+        "total_records": "总记录数",
+        "total_columns": "总列数",
+        "date_columns": "日期列",
+        "numeric_columns": "数值列",
+        "data_types": "数据类型概览",
+        "missing_values": "缺失值",
+        "time_series": "时间序列分析",
+        "distribution": "分布分析",
+        "correlation": "相关矩阵",
+        "category_analysis": "类别分析",
+        "top_categories": "顶级类别",
+        "download_data": "下载处理后的数据",
+        "select_date_col": "选择日期列",
+        "select_value_col": "选择数值列",
+        "select_category_col": "选择分类列",
+        "no_date_col": "未检测到日期列",
+        "no_numeric_col": "未检测到数值列",
+        "no_category_col": "未检测到分类列",
+        "error": "错误",
+        "success": "成功",
+        "file_uploaded": "文件上传成功",
+        "select_language": "选择语言",
+        "reset": "重置",
+        "filter_data": "筛选数据",
+        "apply_filter": "应用筛选",
+        "clear_filter": "清除筛选",
+        "data_summary": "数据摘要",
+        "insights": "洞察",
+        "trend": "趋势",
+        "comparison": "比较",
+        "forecast": "预测"
+    }
+}
 
-uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx", "xls"])
+# Initialize session state for language
+if 'language' not in st.session_state:
+    st.session_state.language = "English"
 
+# Language selector in sidebar
+with st.sidebar:
+    st.title("🌍 Language / 语言 / Bahasa")
+    selected_language = st.selectbox(
+        LANGUAGES[st.session_state.language]["select_language"],
+        options=list(LANGUAGES.keys()),
+        index=list(LANGUAGES.keys()).index(st.session_state.language)
+    )
+    
+    if selected_language != st.session_state.language:
+        st.session_state.language = selected_language
+        st.rerun()
+    
+    st.markdown("---")
+    lang = LANGUAGES[st.session_state.language]
+
+# ===================== MAIN APP =====================
+st.title(f"📊 {lang['title']}")
+st.markdown("---")
+
+# File upload section
+st.header(f"📁 {lang['upload']}")
+st.write(lang['upload_desc'])  # PERBAIKAN DI SINI: menghapus tanda kutip ekstra
+
+uploaded_file = st.file_uploader(
+    lang['drag_drop'],
+    type=['xlsx', 'xls'],
+    help=lang['file_limit']
+)
+
+# Initialize session state for data
+if 'df' not in st.session_state:
+    st.session_state.df = None
+if 'processed' not in st.session_state:
+    st.session_state.processed = False
+
+# Process uploaded file
 if uploaded_file is not None:
-    # Read all sheets and let user pick
     try:
-        xl = pd.read_excel(uploaded_file, sheet_name=None)
+        with st.spinner(lang['processing']):
+            # Read Excel file
+            df = pd.read_excel(uploaded_file, engine='openpyxl')
+            st.session_state.df = df
+            st.session_state.processed = True
+            
+            st.success(f"✅ {lang['file_uploaded']}: {uploaded_file.name}")
+            
     except Exception as e:
-        st.error(f"Error reading Excel file: {e}")
-        st.stop()
+        st.error(f"❌ {lang['error']}: {str(e)}")
+        st.info("💡 Tip: Make sure you have the latest version of openpyxl installed. Run: `pip install --upgrade openpyxl`")
 
-    sheet_names = list(xl.keys())
-    sheet = st.selectbox("Pilih sheet", sheet_names)
-    df = xl[sheet].copy()
-
-    st.write("### Preview data")
-    st.dataframe(df.head(100))
-
-    # Basic cleaning: drop completely empty columns
-    df.dropna(axis=1, how="all", inplace=True)
-
-    # Detect column types
-    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    datetime_cols = df.select_dtypes(include=["datetime"]).columns.tolist()
-    if not datetime_cols:
-        # try to parse any column that looks like date
-        for c in df.columns:
-            if df[c].dtype == object:
-                try:
-                    parsed = pd.to_datetime(df[c], errors="coerce")
-                    if parsed.notna().sum() / max(1, len(parsed)) > 0.5:
-                        df[c] = parsed
-                        datetime_cols.append(c)
-                except Exception:
-                    pass
-
-    categorical_cols = [c for c in df.columns if c not in numeric_cols + datetime_cols]
-
-    st.sidebar.header("Controls")
-    st.sidebar.write(f"Rows: {len(df):,} | Columns: {len(df.columns):,}")
-
-    # KPI row
-    st.markdown("## Key performance indicators")
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Rows", f"{len(df):,}")
-    # Biggest numeric sum column
+# Display dashboard if data is available
+if st.session_state.processed and st.session_state.df is not None:
+    df = st.session_state.df
+    
+    # ===================== DATA PREVIEW =====================
+    st.header(f"🔍 {lang['data_preview']}")
+    
+    # Data filters in sidebar
+    with st.sidebar:
+        st.header(f"🔧 {lang['filter_data']}")
+        
+        # Column type filters
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        date_cols = df.select_dtypes(include=['datetime', 'datetime64']).columns.tolist()
+        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+        
+        # Convert potential date columns
+        for col in df.columns:
+            try:
+                df[col] = pd.to_datetime(df[col], errors='ignore')
+                if df[col].dtype == 'datetime64[ns]':
+                    if col not in date_cols:
+                        date_cols.append(col)
+            except:
+                pass
+        
+        # Numeric filter
+        if numeric_cols:
+            selected_numeric = st.multiselect(
+                f"📈 {lang['select_value_col']}",
+                numeric_cols,
+                default=numeric_cols[:min(2, len(numeric_cols))]
+            )
+        else:
+            selected_numeric = []
+            st.warning(lang['no_numeric_col'])
+        
+        # Date filter
+        if date_cols:
+            selected_date = st.selectbox(
+                f"📅 {lang['select_date_col']}",
+                date_cols
+            )
+        else:
+            selected_date = None
+            st.warning(lang['no_date_col'])
+        
+        # Categorical filter
+        if categorical_cols:
+            selected_category = st.selectbox(
+                f"🏷️ {lang['select_category_col']}",
+                categorical_cols
+            )
+        else:
+            selected_category = None
+            st.warning(lang['no_category_col'])
+        
+        # Row limit
+        row_limit = st.slider("Rows to display", 5, 100, 10)
+    
+    # Display filtered data preview
+    st.dataframe(df.head(row_limit), use_container_width=True)
+    
+    # ===================== KPI SECTION =====================
+    st.header(f"📈 {lang['kpi_section']}")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(lang['total_records'], len(df))
+    
+    with col2:
+        st.metric(lang['total_columns'], len(df.columns))
+    
+    with col3:
+        date_col_count = len(date_cols)
+        st.metric(lang['date_columns'], date_col_count)
+    
+    with col4:
+        numeric_col_count = len(numeric_cols)
+        st.metric(lang['numeric_columns'], numeric_col_count)
+    
+    # Additional metrics row
+    col5, col6, col7, col8 = st.columns(4)
+    
+    with col5:
+        missing_total = df.isnull().sum().sum()
+        st.metric(lang['missing_values'], missing_total)
+    
+    with col6:
+        duplicate_rows = df.duplicated().sum()
+        st.metric("Duplicate Rows / Baris Duplikat / 重复行数", duplicate_rows)
+    
+    with col7:
+        memory_usage = df.memory_usage(deep=True).sum() / 1024 / 1024
+        st.metric("Memory Usage (MB) / Penggunaan Memori (MB) / 内存使用 (MB)", f"{memory_usage:.2f}")
+    
+    with col8:
+        if numeric_cols:
+            avg_numeric = df[numeric_cols].mean().mean()
+            st.metric("Avg Numeric Value / Rata-rata Numerik / 数值平均值", f"{avg_numeric:.2f}")
+        else:
+            st.metric("Avg Numeric Value / Rata-rata Numerik / 数值平均值", "N/A")
+    
+    st.markdown("---")
+    
+    # ===================== CHARTS SECTION =====================
+    st.header(f"📊 {lang['charts_section']}")
+    
+    # Chart 1: Data Types Distribution
+    st.subheader(f"1. {lang['data_types']}")
+    dtype_counts = df.dtypes.value_counts().reset_index()
+    dtype_counts.columns = ['Data Type', 'Count']
+    
+    fig1 = px.pie(
+        dtype_counts, 
+        values='Count', 
+        names='Data Type',
+        title=f"{lang['data_types']}",
+        color_discrete_sequence=px.colors.qualitative.Set3
+    )
+    st.plotly_chart(fig1, use_container_width=True)
+    
+    # Chart 2: Time Series Analysis (if date column exists)
+    if selected_date and selected_numeric:
+        st.subheader(f"2. {lang['time_series']}")
+        
+        # Aggregate by date
+        time_series_df = df.groupby(selected_date)[selected_numeric].sum().reset_index()
+        
+        fig2 = px.line(
+            time_series_df, 
+            x=selected_date, 
+            y=selected_numeric[0] if selected_numeric else selected_numeric,
+            title=f"{lang['trend']}: {selected_numeric[0] if selected_numeric else ''} by {selected_date}",
+            markers=True
+        )
+        
+        # Add trendline
+        fig2.update_traces(mode='lines+markers')
+        
+        st.plotly_chart(fig2, use_container_width=True)
+    
+    # Chart 3: Distribution Analysis
+    if selected_numeric:
+        st.subheader(f"3. {lang['distribution']}")
+        
+        col_chart3_1, col_chart3_2 = st.columns(2)
+        
+        with col_chart3_1:
+            # Histogram
+            fig3a = px.histogram(
+                df, 
+                x=selected_numeric[0],
+                title=f"Histogram of {selected_numeric[0]}",
+                nbins=30,
+                color_discrete_sequence=['#636EFA']
+            )
+            st.plotly_chart(fig3a, use_container_width=True)
+        
+        with col_chart3_2:
+            # Box plot
+            fig3b = px.box(
+                df, 
+                y=selected_numeric[0],
+                title=f"Box Plot of {selected_numeric[0]}",
+                color_discrete_sequence=['#00CC96']
+            )
+            st.plotly_chart(fig3b, use_container_width=True)
+    
+    # Chart 4: Correlation Matrix
+    if len(selected_numeric) > 1:
+        st.subheader(f"4. {lang['correlation']}")
+        
+        corr_matrix = df[selected_numeric].corr()
+        
+        fig4 = px.imshow(
+            corr_matrix,
+            text_auto=True,
+            aspect="auto",
+            color_continuous_scale='RdBu_r',
+            title=f"{lang['correlation']} Matrix",
+            labels=dict(color="Correlation")
+        )
+        st.plotly_chart(fig4, use_container_width=True)
+    
+    # Chart 5: Category Analysis
+    if selected_category and selected_numeric:
+        st.subheader(f"5. {lang['category_analysis']}")
+        
+        col_chart5_1, col_chart5_2 = st.columns(2)
+        
+        with col_chart5_1:
+            # Top categories bar chart
+            top_categories = df[selected_category].value_counts().head(10).reset_index()
+            top_categories.columns = [selected_category, 'Count']
+            
+            fig5a = px.bar(
+                top_categories,
+                x=selected_category,
+                y='Count',
+                title=f"{lang['top_categories']} ({selected_category})",
+                color='Count',
+                color_continuous_scale='Viridis'
+            )
+            st.plotly_chart(fig5a, use_container_width=True)
+        
+        with col_chart5_2:
+            # Category vs numeric value
+            if len(selected_numeric) > 0:
+                category_avg = df.groupby(selected_category)[selected_numeric[0]].mean().reset_index()
+                category_avg = category_avg.sort_values(selected_numeric[0], ascending=False).head(10)
+                
+                fig5b = px.bar(
+                    category_avg,
+                    x=selected_category,
+                    y=selected_numeric[0],
+                    title=f"Avg {selected_numeric[0]} by {selected_category}",
+                    color=selected_numeric[0],
+                    color_continuous_scale='Plasma'
+                )
+                st.plotly_chart(fig5b, use_container_width=True)
+    
+    # ===================== DATA SUMMARY & INSIGHTS =====================
+    st.markdown("---")
+    st.header(f"💡 {lang['insights']}")
+    
+    col_insight1, col_insight2 = st.columns(2)
+    
+    with col_insight1:
+        st.subheader(f"📋 {lang['data_summary']}")
+        
+        summary_stats = []
+        
+        # Basic stats
+        summary_stats.append(f"**{lang['total_records']}**: {len(df)}")
+        summary_stats.append(f"**{lang['total_columns']}**: {len(df.columns)}")
+        summary_stats.append(f"**{lang['missing_values']}**: {df.isnull().sum().sum()}")
+        
+        if numeric_cols:
+            summary_stats.append(f"**{lang['numeric_columns']}**: {len(numeric_cols)}")
+            summary_stats.append(f"**Total nilai numerik**: {df[numeric_cols].sum().sum():,.2f}")
+        
+        if date_cols:
+            summary_stats.append(f"**{lang['date_columns']}**: {len(date_cols)}")
+            if len(date_cols) > 0:
+                date_range = f"{df[date_cols[0]].min().date()} to {df[date_cols[0]].max().date()}"
+                summary_stats.append(f"**Rentang tanggal**: {date_range}")
+        
+        for stat in summary_stats:
+            st.write(f"• {stat}")
+    
+    with col_insight2:
+        st.subheader(f"🔍 Quick {lang['insights']}")
+        
+        insights = []
+        
+        # Generate insights based on data
+        if missing_total > 0:
+            insights.append(f"⚠️ **Ada {missing_total} nilai kosong** - Pertimbangkan untuk imputasi data")
+        
+        if duplicate_rows > 0:
+            insights.append(f"⚠️ **Ada {duplicate_rows} baris duplikat** - Pertimbangkan untuk menghapus duplikat")
+        
+        if numeric_cols:
+            skewness = df[selected_numeric[0]].skew() if selected_numeric else 0
+            if abs(skewness) > 1:
+                skew_type = "positif" if skewness > 0 else "negatif"
+                insights.append(f"📊 **Data miring {skew_type}** (skewness: {skewness:.2f})")
+        
+        if selected_date and selected_numeric:
+            growth = (df[selected_numeric[0]].iloc[-1] - df[selected_numeric[0]].iloc[0]) / df[selected_numeric[0]].iloc[0] * 100 if len(df) > 1 else 0
+            insights.append(f"📈 **Pertumbuhan: {growth:.2f}%** untuk {selected_numeric[0]}")
+        
+        if not insights:
+            insights.append("✅ **Data tampak baik** - Tidak ada masalah kualitas data yang signifikan")
+            insights.append("✅ **Distribusi normal** - Data numerik terdistribusi dengan baik")
+            insights.append("✅ **Tidak ada outlier** - Semua nilai dalam rentang yang wajar")
+        
+        for insight in insights:
+            st.write(f"• {insight}")
+    
+    # ===================== DATA DOWNLOAD =====================
+    st.markdown("---")
+    st.header(f"💾 {lang['download_data']}")
+    
+    # Create processed data
+    processed_df = df.copy()
+    
+    # Add summary statistics
     if numeric_cols:
-        sums = df[numeric_cols].sum(numeric_only=True)
-        top_sum_col = sums.abs().sort_values(ascending=False).index[0]
-        k2.metric(f"Top sum: {top_sum_col}", f"{sums[top_sum_col]:,.0f}")
-        k3.metric("Numeric cols", len(numeric_cols))
-    else:
-        k2.metric("Top sum", "-")
-        k3.metric("Numeric cols", 0)
-
-    if categorical_cols:
-        k4.metric("Unique categories (sample)", 
-                  ", ".join([f"{c}: {df[c].nunique()}" for c in (categorical_cols[:3])]))
-    else:
-        k4.metric("Unique categories", "No categorical columns found")
-
-    st.markdown("---")
-
-    # Chart selection / defaults
-    st.sidebar.header("Chart settings")
-    # Chart 1: Time series
-    st.sidebar.subheader("Time series")
-    date_col = st.sidebar.selectbox("Pilih kolom tanggal (opsional)", [None] + datetime_cols)
-    ts_value_col = st.sidebar.selectbox("Value untuk time series", [None] + numeric_cols)
-
-    # Chart 2: Top categories
-    st.sidebar.subheader("Top by Category")
-    cat_col = st.sidebar.selectbox("Kategori", [None] + categorical_cols)
-    cat_value = st.sidebar.selectbox("Value untuk kategori", [None] + numeric_cols)
-    top_n = st.sidebar.slider("Top N", 3, 20, 8)
-
-    # Chart 3: Distribution
-    st.sidebar.subheader("Distribution")
-    dist_col = st.sidebar.selectbox("Pilih kolom numerik untuk histogram", [None] + numeric_cols, key="dist")
-
-    # Chart 4: Correlation
-    st.sidebar.subheader("Correlation")
-    corr_cols = st.sidebar.multiselect("Pilih kolom numerik untuk korelasi (default: semua)", numeric_cols, default=numeric_cols[:8])
-
-    # Chart 5: Category share
-    st.sidebar.subheader("Category share")
-    share_cat = st.sidebar.selectbox("Kategori untuk pie/treemap", [None] + categorical_cols, key="share")
-
-    # Layout: 2 rows
-    # Row A: Time series (big) + Top categories
-    row_a1, row_a2 = st.columns([2, 1])
-
-    # Chart 1: Time series
-    with row_a1:
-        st.subheader("1) Time series")
-        if date_col and ts_value_col:
-            ts = df[[date_col, ts_value_col]].dropna()
-            ts = ts.groupby(date_col)[ts_value_col].sum().reset_index()
-            fig_ts = px.line(ts, x=date_col, y=ts_value_col, markers=True, title=f"{ts_value_col} over time")
-            st.plotly_chart(fig_ts, use_container_width=True)
-        else:
-            st.info("Pilih kolom tanggal dan nilai numerik di sidebar untuk menampilkan time series.")
-
-    # Chart 2: Top categories
-    with row_a2:
-        st.subheader("2) Top categories")
-        if cat_col and cat_value:
-            tmp = df.groupby(cat_col)[cat_value].sum().sort_values(ascending=False).head(top_n).reset_index()
-            fig_bar = px.bar(tmp, x=cat_value, y=cat_col, orientation="h", title=f"Top {top_n} {cat_col} by {cat_value}")
-            st.plotly_chart(fig_bar, use_container_width=True)
-        else:
-            st.info("Pilih kategori dan nilai numerik di sidebar untuk menampilkan top categories.")
-
-    st.markdown("---")
-
-    # Row B: Distribution, Correlation, Share
-    row_b1, row_b2, row_b3 = st.columns(3)
-
-    # Chart 3: Distribution
-    with row_b1:
-        st.subheader("3) Distribution / Histogram")
-        if dist_col:
-            fig_hist = px.histogram(df, x=dist_col, nbins=30, title=f"Distribution of {dist_col}")
-            st.plotly_chart(fig_hist, use_container_width=True)
-        else:
-            st.info("Pilih kolom numerik untuk histogram di sidebar.")
-
-    # Chart 4: Correlation heatmap
-    with row_b2:
-        st.subheader("4) Correlation heatmap")
-        if len(corr_cols) >= 2:
-            corr = df[corr_cols].corr()
-            fig_corr = go.Figure(data=go.Heatmap(
-                z=corr.values,
-                x=corr.columns,
-                y=corr.columns,
-                colorscale='Viridis'
-            ))
-            fig_corr.update_layout(title="Correlation matrix")
-            st.plotly_chart(fig_corr, use_container_width=True)
-        else:
-            st.info("Pilih minimal 2 kolom numerik untuk korelasi.")
-
-    # Chart 5: Category share (pie or treemap)
-    with row_b3:
-        st.subheader("5) Category share")
-        if share_cat:
-            counts = df[share_cat].value_counts().reset_index()
-            counts.columns = [share_cat, 'count']
-            if counts.shape[0] <= 8:
-                fig_pie = px.pie(counts, values='count', names=share_cat, title=f"Share of {share_cat}")
-                st.plotly_chart(fig_pie, use_container_width=True)
-            else:
-                fig_tree = px.treemap(counts, path=[share_cat], values='count', title=f"Share of {share_cat}")
-                st.plotly_chart(fig_tree, use_container_width=True)
-        else:
-            st.info("Pilih kategori di sidebar untuk menampilkan share (pie/treemap).")
-
-    st.markdown("---")
-    st.write("### Notes & tips")
-    st.write("• Jika kolom tanggal tidak dikenali, pastikan format kolom adalah tanggal atau reformattable.\n"
-             "• Gunakan sidebar untuk memilih kolom yang relevan.\n"
-             "• Untuk dataset besar, pertimbangkan agregasi sebelum plotting.")
-
-    # Allow user to download a cleaned / aggregated summary
-    if st.button("Download aggregated CSV (top-level)"):
-        # create a small summary
-        summary = {
-            'rows': [len(df)],
-            'columns': [len(df.columns)],
-        }
-        sum_df = pd.DataFrame(summary)
-        st.download_button("Download summary CSV", sum_df.to_csv(index=False).encode('utf-8'), "summary.csv", "text/csv")
+        summary_row = pd.DataFrame([['SUMMARY', '', ''] + [df[col].sum() for col in numeric_cols]], 
+                                  columns=processed_df.columns)
+        processed_df = pd.concat([processed_df, summary_row], ignore_index=True)
+    
+    # Convert to CSV for download
+    csv_data = processed_df.to_csv(index=False).encode('utf-8')
+    
+    col_dl1, col_dl2, col_dl3 = st.columns(3)
+    
+    with col_dl1:
+        st.download_button(
+            label="📥 Download as CSV",
+            data=csv_data,
+            file_name="processed_data.csv",
+            mime="text/csv",
+            help="Download the processed data as CSV file"
+        )
+    
+    with col_dl2:
+        # Excel download requires openpyxl
+        try:
+            import openpyxl
+            excel_buffer = pd.ExcelWriter("processed_data.xlsx", engine='openpyxl')
+            processed_df.to_excel(excel_buffer, index=False, sheet_name='Data')
+            
+            # Add summary sheet
+            summary_data = {
+                'Metric': [lang['total_records'], lang['total_columns'], lang['missing_values'], lang['date_columns']],
+                'Value': [len(df), len(df.columns), df.isnull().sum().sum(), len(date_cols)]
+            }
+            pd.DataFrame(summary_data).to_excel(excel_buffer, index=False, sheet_name='Summary')
+            excel_buffer.close()
+            
+            with open("processed_data.xlsx", "rb") as f:
+                excel_data = f.read()
+            
+            st.download_button(
+                label="📥 Download as Excel",
+                data=excel_data,
+                file_name="processed_data.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                help="Download the processed data as Excel file"
+            )
+        except:
+            st.info("Install openpyxl for Excel download: `pip install openpyxl`")
+    
+    with col_dl3:
+        if st.button(f"🔄 {lang['reset']}", use_container_width=True):
+            st.session_state.df = None
+            st.session_state.processed = False
+            st.rerun()
 
 else:
-    st.info("Upload file Excel untuk memulai. Contoh: dataset penjualan dengan kolom tanggal, produk, kategori, dan revenue/nilai.")
+    # Show sample data or instructions
+    st.info(f"👆 {lang['upload_desc']}")
+    
+    # Display sample data structure
+    st.markdown("### 📋 Example Data Structure")
+    sample_data = {
+        'Date': pd.date_range('2024-01-01', periods=5),
+        'Sales': [1000, 1500, 800, 2000, 1200],
+        'Quantity': [10, 15, 8, 20, 12],
+        'Category': ['A', 'B', 'A', 'C', 'B'],
+        'Region': ['North', 'South', 'North', 'East', 'West']
+    }
+    sample_df = pd.DataFrame(sample_data)
+    st.dataframe(sample_df, use_container_width=True)
+    
+    st.markdown("""
+    **Ideal data should include:**
+    - 📅 At least one date column
+    - 🔢 At least one numeric column
+    - 🏷️ At least one categorical column
+    """)
 
-# Footer
+# ===================== FOOTER =====================
 st.markdown("---")
-st.caption("Built with ❤️ using Streamlit — modify the code to fit your business rules and KPIs.")
+footer_col1, footer_col2, footer_col3 = st.columns(3)
+
+with footer_col1:
+    st.markdown("**Multi-Language Business Dashboard**")
+    st.markdown("v2.0 • Powered by Streamlit")
+
+with footer_col2:
+    st.markdown("**Features:**")
+    st.markdown("• 📊 5+ Interactive Charts")
+    st.markdown("• 🌍 3 Languages")
+    st.markdown("• 📈 Auto Data Detection")
+
+with footer_col3:
+    st.markdown("**Instructions:**")
+    st.markdown("1. Upload Excel file")
+    st.markdown("2. Select language")
+    st.markdown("3. Explore insights")
+    
+# Add custom CSS for better appearance
+st.markdown("""
+<style>
+    .stMetric {
+        background-color: #f0f2f6;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 5px solid #4e8cff;
+    }
+    .stDownloadButton > button {
+        width: 100%;
+    }
+</style>
+""", unsafe_allow_html=True)

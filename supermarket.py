@@ -1,3 +1,4 @@
+import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -6,7 +7,7 @@ from datetime import datetime, timedelta
 import warnings
 warnings.filterwarnings('ignore')
 
-# Konfigurasi halaman
+# ⚠️ HARUS di baris pertama setelah import
 st.set_page_config(
     page_title="Dashboard Supermarket",
     page_icon="🛒",
@@ -177,7 +178,6 @@ with tab1:
         height=400
     )
     
-    # FIXED: Menggunakan st.plotly_chart dengan parameter yang benar
     st.plotly_chart(fig1, use_container_width=True)
 
 with tab2:
@@ -405,9 +405,3 @@ st.markdown(
     """.format(date=datetime.now().strftime("%d %B %Y %H:%M")),
     unsafe_allow_html=True
 )
-
-# Debug info (bisa dihilangkan di production)
-with st.expander("ℹ️ Info Debug"):
-    st.write(f"Jumlah baris data: {len(df_filtered):,}")
-    st.write(f"Rentang tanggal: {df_filtered['Tanggal'].min().date()} hingga {df_filtered['Tanggal'].max().date()}")
-    st.write(f"Kategori aktif: {', '.join(df_filtered['Kategori'].unique())}")

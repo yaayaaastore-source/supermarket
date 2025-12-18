@@ -1,0 +1,39 @@
+# ============================================
+# STREAMLIT CONFIGURATION FILE
+# ============================================
+
+[server]
+# Basic server settings
+headless = true               # REQUIRED for cloud deployment
+enableCORS = false            # Disable CORS for security
+enableXsrfProtection = false  # Disable XSRF protection for simplicity
+maxUploadSize = 200           # Max file upload size in MB (200MB default)
+port = 8501                   # Default Streamlit port
+
+[browser]
+# Browser settings
+serverAddress = "localhost"   # Don't change this
+gatherUsageStats = false      # Disable usage statistics
+
+[theme]
+# Theme colors - Customize as needed
+primaryColor = "#2E86AB"      # Main color (blue)
+backgroundColor = "#FFFFFF"   # Background color (white)
+secondaryBackgroundColor = "#F0F2F6"  # Sidebar/secondary background
+textColor = "#262730"         # Main text color (dark gray)
+font = "sans serif"           # Font family
+
+# ============================================
+# OPTIONAL ADVANCED SETTINGS (tidak wajib)
+# ============================================
+
+# [runner]
+# magicEnabled = false        # Disable magic commands if needed
+# fastRerun = true            # Enable fast rerun
+
+# [client]
+# showErrorDetails = true     # Show detailed errors (debug mode)
+# cachingEnabled = true       # Enable caching
+
+# [global]
+# developmentMode = false     # Set to false for production

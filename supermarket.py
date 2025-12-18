@@ -1,602 +1,825 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime
+import plotly.express as px
+from datetime import datetime, timedelta
 import warnings
+import io
+import json
 warnings.filterwarnings('ignore')
 
-# Set page config
+# ⚠️ HARUS di baris pertama setelah import
 st.set_page_config(
-    page_title="Multi-Language Business Dashboard",
-    page_icon="📊",
-    layout="wide"
+    page_title="Supermarket Dashboard",
+    page_icon="🛒",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# ===================== MULTI-LANGUAGE SUPPORT =====================
-# Language dictionary
-LANGUAGES = {
+# ==================== MULTI-LANGUAGE SUPPORT ====================
+language_dict = {
     "English": {
-        "title": "Business Intelligence Dashboard",
-        "upload": "Upload Excel File",
-        "upload_desc": "Upload an Excel file (.xlsx or .xls). The app will automatically detect date, numeric, and categorical columns and show analytical charts.",
-        "drag_drop": "Drag and drop file here",
-        "file_limit": "Limit 200MB per file • XLSX, XLS",
-        "processing": "Processing data...",
-        "data_preview": "Data Preview",
-        "kpi_section": "Key Performance Indicators",
-        "charts_section": "Analytical Charts",
-        "total_records": "Total Records",
-        "total_columns": "Total Columns",
-        "date_columns": "Date Columns",
-        "numeric_columns": "Numeric Columns",
-        "data_types": "Data Types Overview",
-        "missing_values": "Missing Values",
-        "time_series": "Time Series Analysis",
-        "distribution": "Distribution Analysis",
-        "correlation": "Correlation Matrix",
-        "category_analysis": "Category Analysis",
-        "top_categories": "Top Categories",
-        "download_data": "Download Processed Data",
-        "select_date_col": "Select Date Column",
-        "select_value_col": "Select Value Column",
-        "select_category_col": "Select Category Column",
-        "no_date_col": "No date column detected",
-        "no_numeric_col": "No numeric column detected",
-        "no_category_col": "No categorical column detected",
-        "error": "Error",
-        "success": "Success",
-        "file_uploaded": "File uploaded successfully",
-        "select_language": "Select Language",
-        "reset": "Reset",
+        "title": "🛒 Supermarket Analytics Dashboard",
+        "upload_title": "📤 Upload Excel File",
+        "upload_desc": "Upload your supermarket data (Excel format)",
+        "sample_data": "Use Sample Data",
         "filter_data": "Filter Data",
-        "apply_filter": "Apply Filter",
-        "clear_filter": "Clear Filter",
-        "data_summary": "Data Summary",
-        "insights": "Insights",
-        "trend": "Trend",
-        "comparison": "Comparison",
-        "forecast": "Forecast"
+        "value_column": "Select Value Column",
+        "date_column": "Select Date Column",
+        "date_range": "Date Range",
+        "category": "Select Category",
+        "products": "Select Products (Optional)",
+        "overview": "Overview",
+        "categories": "Categories",
+        "products_tab": "Products",
+        "timeseries": "Time Series",
+        "total": "Total",
+        "average": "Average",
+        "transactions": "Transactions",
+        "unique_products": "Unique Products",
+        "category_dist": "Category Distribution",
+        "profit_margin": "Profit Margin by Category",
+        "top_products": "Top 10 Best Selling Products",
+        "product_details": "Product Details",
+        "daily_trend": "Daily Trend",
+        "monthly": "Monthly",
+        "weekly": "Weekly",
+        "export": "Export Data",
+        "download_csv": "Download Data (CSV)",
+        "footer": "Supermarket Analytics Dashboard • Made with Streamlit & Plotly • Updated: {date}",
+        "no_file": "No file uploaded. Using sample data.",
+        "file_loaded": "File successfully loaded!",
+        "invalid_file": "Invalid file format. Please upload Excel file.",
+        "error_chart": "Error displaying chart",
+        "refresh_page": "Try refreshing the page or check your data.",
+        "debug_info": "Debug Info",
+        "data_shape": "Data Shape",
+        "columns": "Columns",
+        "sample_rows": "Sample Data",
+        "search_product": "Search Product",
+        "select_all": "Select All",
+        "clear_all": "Clear All",
+        "revenue": "Revenue",
+        "quantity": "Quantity",
+        "profit": "Profit",
+        "unit_price": "Unit Price",
+        "total_price": "Total Price"
     },
-    "Indonesia": {
-        "title": "Dasbor Bisnis Inteligensi",
-        "upload": "Unggah File Excel",
-        "upload_desc": "Unggah file Excel (.xlsx atau .xls). Aplikasi akan mendeteksi kolom tanggal, numerik, dan kategorikal secara otomatis dan menampilkan grafik analitis.",
-        "drag_drop": "Seret dan lepas file di sini",
-        "file_limit": "Batas 200MB per file • XLSX, XLS",
-        "processing": "Memproses data...",
-        "data_preview": "Pratinjau Data",
-        "kpi_section": "Indikator Kinerja Utama",
-        "charts_section": "Grafik Analitis",
-        "total_records": "Total Data",
-        "total_columns": "Total Kolom",
-        "date_columns": "Kolom Tanggal",
-        "numeric_columns": "Kolom Numerik",
-        "data_types": "Ringkasan Tipe Data",
-        "missing_values": "Nilai Kosong",
-        "time_series": "Analisis Deret Waktu",
-        "distribution": "Analisis Distribusi",
-        "correlation": "Matriks Korelasi",
-        "category_analysis": "Analisis Kategori",
-        "top_categories": "Kategori Teratas",
-        "download_data": "Unduh Data Hasil Olahan",
-        "select_date_col": "Pilih Kolom Tanggal",
-        "select_value_col": "Pilih Kolom Nilai",
-        "select_category_col": "Pilih Kolom Kategori",
-        "no_date_col": "Tidak ada kolom tanggal terdeteksi",
-        "no_numeric_col": "Tidak ada kolom numerik terdeteksi",
-        "no_category_col": "Tidak ada kolom kategorikal terdeteksi",
-        "error": "Error",
-        "success": "Berhasil",
-        "file_uploaded": "File berhasil diunggah",
-        "select_language": "Pilih Bahasa",
-        "reset": "Reset",
+    "Bahasa Indonesia": {
+        "title": "🛒 Dashboard Analisis Supermarket",
+        "upload_title": "📤 Unggah File Excel",
+        "upload_desc": "Unggah data supermarket Anda (format Excel)",
+        "sample_data": "Gunakan Data Contoh",
         "filter_data": "Filter Data",
-        "apply_filter": "Terapkan Filter",
-        "clear_filter": "Hapus Filter",
-        "data_summary": "Ringkasan Data",
-        "insights": "Insights",
-        "trend": "Tren",
-        "comparison": "Perbandingan",
-        "forecast": "Perkiraan"
+        "value_column": "Pilih Kolom Nilai",
+        "date_column": "Pilih Kolom Tanggal",
+        "date_range": "Rentang Tanggal",
+        "category": "Pilih Kategori",
+        "products": "Pilih Produk (Opsional)",
+        "overview": "Ringkasan",
+        "categories": "Kategori",
+        "products_tab": "Produk",
+        "timeseries": "Deret Waktu",
+        "total": "Total",
+        "average": "Rata-rata",
+        "transactions": "Transaksi",
+        "unique_products": "Produk Unik",
+        "category_dist": "Distribusi Kategori",
+        "profit_margin": "Margin Profit per Kategori",
+        "top_products": "10 Produk Terlaris Teratas",
+        "product_details": "Detail Produk",
+        "daily_trend": "Tren Harian",
+        "monthly": "Bulanan",
+        "weekly": "Mingguan",
+        "export": "Ekspor Data",
+        "download_csv": "Unduh Data (CSV)",
+        "footer": "Dashboard Analisis Supermarket • Dibuat dengan Streamlit & Plotly • Diperbarui: {date}",
+        "no_file": "Tidak ada file yang diunggah. Menggunakan data contoh.",
+        "file_loaded": "File berhasil dimuat!",
+        "invalid_file": "Format file tidak valid. Harap unggah file Excel.",
+        "error_chart": "Error menampilkan grafik",
+        "refresh_page": "Coba refresh halaman atau periksa data Anda.",
+        "debug_info": "Info Debug",
+        "data_shape": "Bentuk Data",
+        "columns": "Kolom",
+        "sample_rows": "Data Contoh",
+        "search_product": "Cari Produk",
+        "select_all": "Pilih Semua",
+        "clear_all": "Hapus Semua",
+        "revenue": "Pendapatan",
+        "quantity": "Jumlah",
+        "profit": "Profit",
+        "unit_price": "Harga Satuan",
+        "total_price": "Total Harga"
     },
     "中文": {
-        "title": "商业智能仪表板",
-        "upload": "上传 Excel 文件",
-        "upload_desc": "上传 Excel 文件（.xlsx 或 .xls）。应用将自动检测日期、数值和分类列，并显示分析图表。",
-        "drag_drop": "拖放文件到此处",
-        "file_limit": "每文件限制 200MB • XLSX, XLS",
-        "processing": "处理数据中...",
-        "data_preview": "数据预览",
-        "kpi_section": "关键绩效指标",
-        "charts_section": "分析图表",
-        "total_records": "总记录数",
-        "total_columns": "总列数",
-        "date_columns": "日期列",
-        "numeric_columns": "数值列",
-        "data_types": "数据类型概览",
-        "missing_values": "缺失值",
-        "time_series": "时间序列分析",
-        "distribution": "分布分析",
-        "correlation": "相关矩阵",
-        "category_analysis": "类别分析",
-        "top_categories": "顶级类别",
-        "download_data": "下载处理后的数据",
-        "select_date_col": "选择日期列",
-        "select_value_col": "选择数值列",
-        "select_category_col": "选择分类列",
-        "no_date_col": "未检测到日期列",
-        "no_numeric_col": "未检测到数值列",
-        "no_category_col": "未检测到分类列",
-        "error": "错误",
-        "success": "成功",
-        "file_uploaded": "文件上传成功",
-        "select_language": "选择语言",
-        "reset": "重置",
+        "title": "🛒 超市分析仪表板",
+        "upload_title": "📤 上传Excel文件",
+        "upload_desc": "上传您的超市数据（Excel格式）",
+        "sample_data": "使用示例数据",
         "filter_data": "筛选数据",
-        "apply_filter": "应用筛选",
-        "clear_filter": "清除筛选",
-        "data_summary": "数据摘要",
-        "insights": "洞察",
-        "trend": "趋势",
-        "comparison": "比较",
-        "forecast": "预测"
+        "value_column": "选择数值列",
+        "date_column": "选择日期列",
+        "date_range": "日期范围",
+        "category": "选择类别",
+        "products": "选择产品（可选）",
+        "overview": "概览",
+        "categories": "类别",
+        "products_tab": "产品",
+        "timeseries": "时间序列",
+        "total": "总计",
+        "average": "平均",
+        "transactions": "交易",
+        "unique_products": "唯一产品",
+        "category_dist": "类别分布",
+        "profit_margin": "按类别利润率",
+        "top_products": "前10个畅销产品",
+        "product_details": "产品详情",
+        "daily_trend": "每日趋势",
+        "monthly": "月度",
+        "weekly": "周度",
+        "export": "导出数据",
+        "download_csv": "下载数据（CSV）",
+        "footer": "超市分析仪表板 • 使用Streamlit和Plotly制作 • 更新时间: {date}",
+        "no_file": "未上传文件。使用示例数据。",
+        "file_loaded": "文件加载成功！",
+        "invalid_file": "文件格式无效。请上传Excel文件。",
+        "error_chart": "显示图表时出错",
+        "refresh_page": "尝试刷新页面或检查您的数据。",
+        "debug_info": "调试信息",
+        "data_shape": "数据形状",
+        "columns": "列",
+        "sample_rows": "示例数据",
+        "search_product": "搜索产品",
+        "select_all": "全选",
+        "clear_all": "清除全部",
+        "revenue": "收入",
+        "quantity": "数量",
+        "profit": "利润",
+        "unit_price": "单价",
+        "total_price": "总价"
     }
 }
 
-# Initialize session state for language
-if 'language' not in st.session_state:
-    st.session_state.language = "English"
-
-# Language selector in sidebar
-with st.sidebar:
-    st.title("🌍 Language / 语言 / Bahasa")
-    selected_language = st.selectbox(
-        LANGUAGES[st.session_state.language]["select_language"],
-        options=list(LANGUAGES.keys()),
-        index=list(LANGUAGES.keys()).index(st.session_state.language)
-    )
-    
-    if selected_language != st.session_state.language:
-        st.session_state.language = selected_language
-        st.rerun()
-    
-    st.markdown("---")
-    lang = LANGUAGES[st.session_state.language]
-
-# ===================== MAIN APP =====================
-st.title(f"📊 {lang['title']}")
-st.markdown("---")
-
-# File upload section
-st.header(f"📁 {lang['upload']}")
-st.write(lang['upload_desc'])  # PERBAIKAN DI SINI: menghapus tanda kutip ekstra
-
-uploaded_file = st.file_uploader(
-    lang['drag_drop'],
-    type=['xlsx', 'xls'],
-    help=lang['file_limit']
-)
-
-# Initialize session state for data
-if 'df' not in st.session_state:
-    st.session_state.df = None
-if 'processed' not in st.session_state:
-    st.session_state.processed = False
-
-# Process uploaded file
-if uploaded_file is not None:
-    try:
-        with st.spinner(lang['processing']):
-            # Read Excel file
-            df = pd.read_excel(uploaded_file, engine='openpyxl')
-            st.session_state.df = df
-            st.session_state.processed = True
-            
-            st.success(f"✅ {lang['file_uploaded']}: {uploaded_file.name}")
-            
-    except Exception as e:
-        st.error(f"❌ {lang['error']}: {str(e)}")
-        st.info("💡 Tip: Make sure you have the latest version of openpyxl installed. Run: `pip install --upgrade openpyxl`")
-
-# Display dashboard if data is available
-if st.session_state.processed and st.session_state.df is not None:
-    df = st.session_state.df
-    
-    # ===================== DATA PREVIEW =====================
-    st.header(f"🔍 {lang['data_preview']}")
-    
-    # Data filters in sidebar
-    with st.sidebar:
-        st.header(f"🔧 {lang['filter_data']}")
-        
-        # Column type filters
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        date_cols = df.select_dtypes(include=['datetime', 'datetime64']).columns.tolist()
-        categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-        
-        # Convert potential date columns
-        for col in df.columns:
-            try:
-                df[col] = pd.to_datetime(df[col], errors='ignore')
-                if df[col].dtype == 'datetime64[ns]':
-                    if col not in date_cols:
-                        date_cols.append(col)
-            except:
-                pass
-        
-        # Numeric filter
-        if numeric_cols:
-            selected_numeric = st.multiselect(
-                f"📈 {lang['select_value_col']}",
-                numeric_cols,
-                default=numeric_cols[:min(2, len(numeric_cols))]
-            )
-        else:
-            selected_numeric = []
-            st.warning(lang['no_numeric_col'])
-        
-        # Date filter
-        if date_cols:
-            selected_date = st.selectbox(
-                f"📅 {lang['select_date_col']}",
-                date_cols
-            )
-        else:
-            selected_date = None
-            st.warning(lang['no_date_col'])
-        
-        # Categorical filter
-        if categorical_cols:
-            selected_category = st.selectbox(
-                f"🏷️ {lang['select_category_col']}",
-                categorical_cols
-            )
-        else:
-            selected_category = None
-            st.warning(lang['no_category_col'])
-        
-        # Row limit
-        row_limit = st.slider("Rows to display", 5, 100, 10)
-    
-    # Display filtered data preview
-    st.dataframe(df.head(row_limit), use_container_width=True)
-    
-    # ===================== KPI SECTION =====================
-    st.header(f"📈 {lang['kpi_section']}")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric(lang['total_records'], len(df))
-    
-    with col2:
-        st.metric(lang['total_columns'], len(df.columns))
-    
-    with col3:
-        date_col_count = len(date_cols)
-        st.metric(lang['date_columns'], date_col_count)
-    
-    with col4:
-        numeric_col_count = len(numeric_cols)
-        st.metric(lang['numeric_columns'], numeric_col_count)
-    
-    # Additional metrics row
-    col5, col6, col7, col8 = st.columns(4)
-    
-    with col5:
-        missing_total = df.isnull().sum().sum()
-        st.metric(lang['missing_values'], missing_total)
-    
-    with col6:
-        duplicate_rows = df.duplicated().sum()
-        st.metric("Duplicate Rows / Baris Duplikat / 重复行数", duplicate_rows)
-    
-    with col7:
-        memory_usage = df.memory_usage(deep=True).sum() / 1024 / 1024
-        st.metric("Memory Usage (MB) / Penggunaan Memori (MB) / 内存使用 (MB)", f"{memory_usage:.2f}")
-    
-    with col8:
-        if numeric_cols:
-            avg_numeric = df[numeric_cols].mean().mean()
-            st.metric("Avg Numeric Value / Rata-rata Numerik / 数值平均值", f"{avg_numeric:.2f}")
-        else:
-            st.metric("Avg Numeric Value / Rata-rata Numerik / 数值平均值", "N/A")
-    
-    st.markdown("---")
-    
-    # ===================== CHARTS SECTION =====================
-    st.header(f"📊 {lang['charts_section']}")
-    
-    # Chart 1: Data Types Distribution
-    st.subheader(f"1. {lang['data_types']}")
-    dtype_counts = df.dtypes.value_counts().reset_index()
-    dtype_counts.columns = ['Data Type', 'Count']
-    
-    fig1 = px.pie(
-        dtype_counts, 
-        values='Count', 
-        names='Data Type',
-        title=f"{lang['data_types']}",
-        color_discrete_sequence=px.colors.qualitative.Set3
-    )
-    st.plotly_chart(fig1, use_container_width=True)
-    
-    # Chart 2: Time Series Analysis (if date column exists)
-    if selected_date and selected_numeric:
-        st.subheader(f"2. {lang['time_series']}")
-        
-        # Aggregate by date
-        time_series_df = df.groupby(selected_date)[selected_numeric].sum().reset_index()
-        
-        fig2 = px.line(
-            time_series_df, 
-            x=selected_date, 
-            y=selected_numeric[0] if selected_numeric else selected_numeric,
-            title=f"{lang['trend']}: {selected_numeric[0] if selected_numeric else ''} by {selected_date}",
-            markers=True
-        )
-        
-        # Add trendline
-        fig2.update_traces(mode='lines+markers')
-        
-        st.plotly_chart(fig2, use_container_width=True)
-    
-    # Chart 3: Distribution Analysis
-    if selected_numeric:
-        st.subheader(f"3. {lang['distribution']}")
-        
-        col_chart3_1, col_chart3_2 = st.columns(2)
-        
-        with col_chart3_1:
-            # Histogram
-            fig3a = px.histogram(
-                df, 
-                x=selected_numeric[0],
-                title=f"Histogram of {selected_numeric[0]}",
-                nbins=30,
-                color_discrete_sequence=['#636EFA']
-            )
-            st.plotly_chart(fig3a, use_container_width=True)
-        
-        with col_chart3_2:
-            # Box plot
-            fig3b = px.box(
-                df, 
-                y=selected_numeric[0],
-                title=f"Box Plot of {selected_numeric[0]}",
-                color_discrete_sequence=['#00CC96']
-            )
-            st.plotly_chart(fig3b, use_container_width=True)
-    
-    # Chart 4: Correlation Matrix
-    if len(selected_numeric) > 1:
-        st.subheader(f"4. {lang['correlation']}")
-        
-        corr_matrix = df[selected_numeric].corr()
-        
-        fig4 = px.imshow(
-            corr_matrix,
-            text_auto=True,
-            aspect="auto",
-            color_continuous_scale='RdBu_r',
-            title=f"{lang['correlation']} Matrix",
-            labels=dict(color="Correlation")
-        )
-        st.plotly_chart(fig4, use_container_width=True)
-    
-    # Chart 5: Category Analysis
-    if selected_category and selected_numeric:
-        st.subheader(f"5. {lang['category_analysis']}")
-        
-        col_chart5_1, col_chart5_2 = st.columns(2)
-        
-        with col_chart5_1:
-            # Top categories bar chart
-            top_categories = df[selected_category].value_counts().head(10).reset_index()
-            top_categories.columns = [selected_category, 'Count']
-            
-            fig5a = px.bar(
-                top_categories,
-                x=selected_category,
-                y='Count',
-                title=f"{lang['top_categories']} ({selected_category})",
-                color='Count',
-                color_continuous_scale='Viridis'
-            )
-            st.plotly_chart(fig5a, use_container_width=True)
-        
-        with col_chart5_2:
-            # Category vs numeric value
-            if len(selected_numeric) > 0:
-                category_avg = df.groupby(selected_category)[selected_numeric[0]].mean().reset_index()
-                category_avg = category_avg.sort_values(selected_numeric[0], ascending=False).head(10)
-                
-                fig5b = px.bar(
-                    category_avg,
-                    x=selected_category,
-                    y=selected_numeric[0],
-                    title=f"Avg {selected_numeric[0]} by {selected_category}",
-                    color=selected_numeric[0],
-                    color_continuous_scale='Plasma'
-                )
-                st.plotly_chart(fig5b, use_container_width=True)
-    
-    # ===================== DATA SUMMARY & INSIGHTS =====================
-    st.markdown("---")
-    st.header(f"💡 {lang['insights']}")
-    
-    col_insight1, col_insight2 = st.columns(2)
-    
-    with col_insight1:
-        st.subheader(f"📋 {lang['data_summary']}")
-        
-        summary_stats = []
-        
-        # Basic stats
-        summary_stats.append(f"**{lang['total_records']}**: {len(df)}")
-        summary_stats.append(f"**{lang['total_columns']}**: {len(df.columns)}")
-        summary_stats.append(f"**{lang['missing_values']}**: {df.isnull().sum().sum()}")
-        
-        if numeric_cols:
-            summary_stats.append(f"**{lang['numeric_columns']}**: {len(numeric_cols)}")
-            summary_stats.append(f"**Total nilai numerik**: {df[numeric_cols].sum().sum():,.2f}")
-        
-        if date_cols:
-            summary_stats.append(f"**{lang['date_columns']}**: {len(date_cols)}")
-            if len(date_cols) > 0:
-                date_range = f"{df[date_cols[0]].min().date()} to {df[date_cols[0]].max().date()}"
-                summary_stats.append(f"**Rentang tanggal**: {date_range}")
-        
-        for stat in summary_stats:
-            st.write(f"• {stat}")
-    
-    with col_insight2:
-        st.subheader(f"🔍 Quick {lang['insights']}")
-        
-        insights = []
-        
-        # Generate insights based on data
-        if missing_total > 0:
-            insights.append(f"⚠️ **Ada {missing_total} nilai kosong** - Pertimbangkan untuk imputasi data")
-        
-        if duplicate_rows > 0:
-            insights.append(f"⚠️ **Ada {duplicate_rows} baris duplikat** - Pertimbangkan untuk menghapus duplikat")
-        
-        if numeric_cols:
-            skewness = df[selected_numeric[0]].skew() if selected_numeric else 0
-            if abs(skewness) > 1:
-                skew_type = "positif" if skewness > 0 else "negatif"
-                insights.append(f"📊 **Data miring {skew_type}** (skewness: {skewness:.2f})")
-        
-        if selected_date and selected_numeric:
-            growth = (df[selected_numeric[0]].iloc[-1] - df[selected_numeric[0]].iloc[0]) / df[selected_numeric[0]].iloc[0] * 100 if len(df) > 1 else 0
-            insights.append(f"📈 **Pertumbuhan: {growth:.2f}%** untuk {selected_numeric[0]}")
-        
-        if not insights:
-            insights.append("✅ **Data tampak baik** - Tidak ada masalah kualitas data yang signifikan")
-            insights.append("✅ **Distribusi normal** - Data numerik terdistribusi dengan baik")
-            insights.append("✅ **Tidak ada outlier** - Semua nilai dalam rentang yang wajar")
-        
-        for insight in insights:
-            st.write(f"• {insight}")
-    
-    # ===================== DATA DOWNLOAD =====================
-    st.markdown("---")
-    st.header(f"💾 {lang['download_data']}")
-    
-    # Create processed data
-    processed_df = df.copy()
-    
-    # Add summary statistics
-    if numeric_cols:
-        summary_row = pd.DataFrame([['SUMMARY', '', ''] + [df[col].sum() for col in numeric_cols]], 
-                                  columns=processed_df.columns)
-        processed_df = pd.concat([processed_df, summary_row], ignore_index=True)
-    
-    # Convert to CSV for download
-    csv_data = processed_df.to_csv(index=False).encode('utf-8')
-    
-    col_dl1, col_dl2, col_dl3 = st.columns(3)
-    
-    with col_dl1:
-        st.download_button(
-            label="📥 Download as CSV",
-            data=csv_data,
-            file_name="processed_data.csv",
-            mime="text/csv",
-            help="Download the processed data as CSV file"
-        )
-    
-    with col_dl2:
-        # Excel download requires openpyxl
-        try:
-            import openpyxl
-            excel_buffer = pd.ExcelWriter("processed_data.xlsx", engine='openpyxl')
-            processed_df.to_excel(excel_buffer, index=False, sheet_name='Data')
-            
-            # Add summary sheet
-            summary_data = {
-                'Metric': [lang['total_records'], lang['total_columns'], lang['missing_values'], lang['date_columns']],
-                'Value': [len(df), len(df.columns), df.isnull().sum().sum(), len(date_cols)]
-            }
-            pd.DataFrame(summary_data).to_excel(excel_buffer, index=False, sheet_name='Summary')
-            excel_buffer.close()
-            
-            with open("processed_data.xlsx", "rb") as f:
-                excel_data = f.read()
-            
-            st.download_button(
-                label="📥 Download as Excel",
-                data=excel_data,
-                file_name="processed_data.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                help="Download the processed data as Excel file"
-            )
-        except:
-            st.info("Install openpyxl for Excel download: `pip install openpyxl`")
-    
-    with col_dl3:
-        if st.button(f"🔄 {lang['reset']}", use_container_width=True):
-            st.session_state.df = None
-            st.session_state.processed = False
-            st.rerun()
-
-else:
-    # Show sample data or instructions
-    st.info(f"👆 {lang['upload_desc']}")
-    
-    # Display sample data structure
-    st.markdown("### 📋 Example Data Structure")
-    sample_data = {
-        'Date': pd.date_range('2024-01-01', periods=5),
-        'Sales': [1000, 1500, 800, 2000, 1200],
-        'Quantity': [10, 15, 8, 20, 12],
-        'Category': ['A', 'B', 'A', 'C', 'B'],
-        'Region': ['North', 'South', 'North', 'East', 'West']
-    }
-    sample_df = pd.DataFrame(sample_data)
-    st.dataframe(sample_df, use_container_width=True)
-    
-    st.markdown("""
-    **Ideal data should include:**
-    - 📅 At least one date column
-    - 🔢 At least one numeric column
-    - 🏷️ At least one categorical column
-    """)
-
-# ===================== FOOTER =====================
-st.markdown("---")
-footer_col1, footer_col2, footer_col3 = st.columns(3)
-
-with footer_col1:
-    st.markdown("**Multi-Language Business Dashboard**")
-    st.markdown("v2.0 • Powered by Streamlit")
-
-with footer_col2:
-    st.markdown("**Features:**")
-    st.markdown("• 📊 5+ Interactive Charts")
-    st.markdown("• 🌍 3 Languages")
-    st.markdown("• 📈 Auto Data Detection")
-
-with footer_col3:
-    st.markdown("**Instructions:**")
-    st.markdown("1. Upload Excel file")
-    st.markdown("2. Select language")
-    st.markdown("3. Explore insights")
-    
-# Add custom CSS for better appearance
+# CSS kustom
 st.markdown("""
 <style>
-    .stMetric {
-        background-color: #f0f2f6;
-        padding: 15px;
-        border-radius: 10px;
-        border-left: 5px solid #4e8cff;
+    .main-header {
+        font-size: 2.5rem;
+        color: #1E3A8A;
+        text-align: center;
+        margin-bottom: 2rem;
     }
-    .stDownloadButton > button {
-        width: 100%;
+    .metric-card {
+        background-color: #F8FAFC;
+        padding: 1.5rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .stPlotlyChart {
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .error-box {
+        background-color: #FEE2E2;
+        border: 1px solid #EF4444;
+        padding: 1rem;
+        border-radius: 8px;
+        color: #991B1B;
+    }
+    .success-box {
+        background-color: #D1FAE5;
+        border: 1px solid #10B981;
+        padding: 1rem;
+        border-radius: 8px;
+        color: #065F46;
+    }
+    .language-selector {
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        z-index: 1000;
+    }
+    .upload-section {
+        background-color: #F0F9FF;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 2px dashed #3B82F6;
+        margin-bottom: 2rem;
     }
 </style>
 """, unsafe_allow_html=True)
+
+# Pilih bahasa di pojok kanan atas
+col1, col2, col3 = st.columns([6, 1, 1])
+with col3:
+    language = st.selectbox("", ["English", "Bahasa Indonesia", "中文"], label_visibility="collapsed")
+
+# Ambil teks berdasarkan bahasa
+text = language_dict[language]
+
+# Header
+st.markdown(f'<h1 class="main-header">{text["title"]}</h1>', unsafe_allow_html=True)
+
+# ==================== UPLOAD FILE EXCEL ====================
+st.markdown(f'<div class="upload-section"><h3>{text["upload_title"]}</h3></div>', unsafe_allow_html=True)
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    uploaded_file = st.file_uploader(
+        text["upload_desc"],
+        type=['xlsx', 'xls', 'csv'],
+        help="Upload Excel file containing supermarket data"
+    )
+
+with col2:
+    use_sample = st.checkbox(text["sample_data"], value=True)
+
+# Fungsi untuk generate data sampel
+@st.cache_data
+def generate_sample_data():
+    np.random.seed(42)
+    dates = pd.date_range(start='2024-01-01', end='2024-12-31', freq='D')
+    
+    # Multi-language categories
+    categories = {
+        'English': ['Food', 'Beverages', 'Electronics', 'Clothing', 'Household'],
+        'Bahasa Indonesia': ['Makanan', 'Minuman', 'Elektronik', 'Pakaian', 'Rumah Tangga'],
+        '中文': ['食品', '饮料', '电子产品', '服装', '家居用品']
+    }
+    
+    products = {
+        'Food': ['Bread', 'Milk', 'Eggs', 'Meat', 'Vegetables'],
+        'Beverages': ['Water', 'Juice', 'Coffee', 'Tea', 'Soda'],
+        'Electronics': ['Charger', 'Headphones', 'Cable', 'Battery', 'Adapter'],
+        'Clothing': ['T-Shirt', 'Pants', 'Jacket', 'Hat', 'Shoes'],
+        'Household': ['Soap', 'Toothpaste', 'Shampoo', 'Broom', 'Mop']
+    }
+    
+    data = []
+    for date in dates[:100]:  # Limit to 100 days for performance
+        for category_en in categories['English']:
+            for product in products[category_en][:2]:  # 2 products per category
+                quantity = np.random.randint(1, 100)
+                unit_price = np.random.uniform(1000, 50000)
+                total_price = quantity * unit_price
+                profit = total_price * np.random.uniform(0.1, 0.4)
+                
+                # Create entry for each language
+                for lang in ['English', 'Bahasa Indonesia', '中文']:
+                    category = categories[lang][categories['English'].index(category_en)]
+                    
+                    data.append({
+                        'Date': date,
+                        'Category': category,
+                        'Product': product,
+                        'Quantity': quantity,
+                        'Unit_Price': unit_price,
+                        'Total_Price': total_price,
+                        'Profit': profit,
+                        'Month': date.strftime('%B'),
+                        'Day': date.strftime('%A'),
+                        'Week': date.isocalendar().week,
+                        'Language': lang
+                    })
+    
+    df = pd.DataFrame(data)
+    # Filter based on selected language
+    df = df[df['Language'] == language]
+    df = df.drop('Language', axis=1)
+    
+    return df
+
+# Load data from uploaded file or use sample
+df = None
+if uploaded_file is not None:
+    try:
+        if uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
+        
+        # Clean column names
+        df.columns = [col.strip().replace(' ', '_') for col in df.columns]
+        
+        # Ensure date column exists
+        date_cols = [col for col in df.columns if 'date' in col.lower() or 'tanggal' in col.lower() or '日期' in col.lower()]
+        if date_cols:
+            df[date_cols[0]] = pd.to_datetime(df[date_cols[0]], errors='coerce')
+        
+        st.success(f"✅ {text['file_loaded']}")
+        st.info(f"📊 {len(df)} rows, {len(df.columns)} columns loaded")
+        
+    except Exception as e:
+        st.error(f"{text['invalid_file']}: {str(e)}")
+        df = generate_sample_data()
+        use_sample = True
+elif use_sample:
+    df = generate_sample_data()
+    st.info(f"📋 {text['no_file']}")
+
+# Sidebar untuk filter
+with st.sidebar:
+    st.header("⚙️ " + text["filter_data"])
+    
+    if df is not None:
+        # Kolom-kolom yang tersedia
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        date_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
+        category_cols = [col for col in df.columns if df[col].dtype == 'object' and df[col].nunique() < 20]
+        
+        # Pilih kolom value
+        default_value_col = None
+        for col in ['Total_Price', 'Revenue', 'Sales', 'Amount', 'Profit', 'Quantity']:
+            if col in df.columns:
+                default_value_col = col
+                break
+        if not default_value_col and numeric_cols:
+            default_value_col = numeric_cols[0]
+        
+        value_column = st.selectbox(
+            text["value_column"],
+            options=numeric_cols if numeric_cols else [],
+            index=0 if default_value_col in (numeric_cols if numeric_cols else []) else 0
+        )
+        
+        # Pilih kolom date
+        default_date_col = None
+        for col in ['Date', 'Tanggal', '日期', 'Transaction_Date', 'Order_Date']:
+            if col in df.columns:
+                default_date_col = col
+                break
+        if not default_date_col and date_cols:
+            default_date_col = date_cols[0]
+        
+        date_column = st.selectbox(
+            text["date_column"],
+            options=date_cols if date_cols else [],
+            index=0 if default_date_col in (date_cols if date_cols else []) else 0
+        )
+        
+        # Filter berdasarkan tanggal
+        if date_column and date_column in df.columns:
+            df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
+            min_date = df[date_column].min().date()
+            max_date = df[date_column].max().date()
+            
+            date_range = st.date_input(
+                text["date_range"],
+                value=(min_date, max_date),
+                min_value=min_date,
+                max_value=max_date
+            )
+            
+            if len(date_range) == 2:
+                start_date, end_date = date_range
+                df_filtered = df[(df[date_column].dt.date >= start_date) & (df[date_column].dt.date <= end_date)]
+            else:
+                df_filtered = df
+        else:
+            df_filtered = df
+        
+        # Filter kategori
+        if category_cols:
+            category_column = st.selectbox(
+                "Category Column",
+                options=category_cols,
+                index=0
+            )
+            
+            categories = st.multiselect(
+                text["category"],
+                options=df_filtered[category_column].unique(),
+                default=df_filtered[category_column].unique()[:5]
+            )
+            
+            if categories:
+                df_filtered = df_filtered[df_filtered[category_column].isin(categories)]
+        
+        # Filter produk dengan search
+        product_col = st.selectbox(
+            "Product Column",
+            options=[col for col in df.columns if df[col].dtype == 'object' and col != category_column] if 'category_column' in locals() else [],
+            index=0
+        ) if 'category_column' in locals() else None
+        
+        if product_col:
+            # Search box untuk produk
+            search_term = st.text_input(text["search_product"], "")
+            
+            all_products = df_filtered[product_col].unique()
+            
+            if search_term:
+                filtered_products = [p for p in all_products if search_term.lower() in str(p).lower()]
+            else:
+                filtered_products = all_products
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button(text["select_all"]):
+                    st.session_state.selected_products = filtered_products
+            with col2:
+                if st.button(text["clear_all"]):
+                    st.session_state.selected_products = []
+            
+            if 'selected_products' not in st.session_state:
+                st.session_state.selected_products = []
+            
+            selected_products = st.multiselect(
+                text["products"],
+                options=filtered_products,
+                default=st.session_state.selected_products
+            )
+            
+            if selected_products:
+                df_filtered = df_filtered[df_filtered[product_col].isin(selected_products)]
+    else:
+        st.warning("No data available. Please upload a file or use sample data.")
+        df_filtered = pd.DataFrame()
+
+# Fungsi untuk membuat grafik dengan error handling
+def create_safe_plotly_chart(fig, chart_title=""):
+    """Fungsi aman untuk membuat plotly chart dengan error handling"""
+    try:
+        if fig is None:
+            raise ValueError("Figure is None")
+        
+        if not isinstance(fig, (go.Figure, px._figure.Figure)):
+            raise TypeError(f"Object must be Plotly Figure, not {type(fig)}")
+        
+        if isinstance(fig, px._figure.Figure):
+            fig = go.Figure(fig)
+        
+        if chart_title:
+            fig.update_layout(title=chart_title)
+        
+        if fig.layout is None:
+            fig.update_layout()
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+    except Exception as e:
+        st.markdown(f"""
+        <div class="error-box">
+            <strong>⚠️ {text['error_chart']}:</strong><br>
+            {str(e)}<br><br>
+            <small>{text['refresh_page']}</small>
+        </div>
+        """, unsafe_allow_html=True)
+
+# Main dashboard hanya jika ada data
+if df_filtered is not None and not df_filtered.empty:
+    # Tab utama
+    tab1, tab2, tab3, tab4 = st.tabs([
+        f"📈 {text['overview']}",
+        f"📊 {text['categories']}",
+        f"🛍️ {text['products_tab']}",
+        f"📅 {text['timeseries']}"
+    ])
+    
+    with tab1:
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            total_value = df_filtered[value_column].sum() if value_column in df_filtered.columns else 0
+            st.metric(
+                label=text["total"],
+                value=f"${total_value:,.0f}" if 'price' in value_column.lower() or 'revenue' in value_column.lower() or 'profit' in value_column.lower() else f"{total_value:,.0f}",
+                delta=f"{total_value * 0.05:,.0f}"
+            )
+        
+        with col2:
+            avg_value = df_filtered[value_column].mean() if value_column in df_filtered.columns else 0
+            st.metric(
+                label=text["average"],
+                value=f"${avg_value:,.2f}" if 'price' in value_column.lower() or 'revenue' in value_column.lower() or 'profit' in value_column.lower() else f"{avg_value:,.2f}",
+                delta=f"{avg_value * 0.03:,.2f}"
+            )
+        
+        with col3:
+            total_transactions = len(df_filtered)
+            st.metric(
+                label=text["transactions"],
+                value=f"{total_transactions:,}",
+                delta=f"{int(total_transactions * 0.02):,}"
+            )
+        
+        with col4:
+            if 'product_col' in locals() and product_col:
+                unique_products = df_filtered[product_col].nunique()
+            else:
+                unique_products = 0
+            st.metric(
+                label=text["unique_products"],
+                value=f"{unique_products}",
+                delta=f"{int(unique_products * 0.01)}"
+            )
+        
+        # Grafik 1: Value per Kategori
+        st.subheader(f"{value_column} by Category")
+        try:
+            if 'category_column' in locals() and category_column in df_filtered.columns:
+                value_by_category = df_filtered.groupby(category_column)[value_column].sum().reset_index()
+                
+                fig1 = go.Figure(data=[
+                    go.Bar(
+                        x=value_by_category[category_column],
+                        y=value_by_category[value_column],
+                        marker_color=['#1E3A8A', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE', '#E0F2FE'],
+                        text=[f"${x:,.0f}" if 'price' in value_column.lower() or 'revenue' in value_column.lower() or 'profit' in value_column.lower() else f"{x:,.0f}" 
+                              for x in value_by_category[value_column]],
+                        textposition='auto'
+                    )
+                ])
+                
+                fig1.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    yaxis_title=f"{value_column} ({'$' if 'price' in value_column.lower() or 'revenue' in value_column.lower() or 'profit' in value_column.lower() else 'Units'})",
+                    xaxis_title=text["category"],
+                    height=400,
+                    showlegend=False
+                )
+                
+                create_safe_plotly_chart(fig1)
+        except Exception as e:
+            st.error(f"{text['error_chart']}: {str(e)}")
+    
+    with tab2:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader(text["category_dist"])
+            try:
+                if 'category_column' in locals() and category_column in df_filtered.columns:
+                    category_dist = df_filtered[category_column].value_counts().reset_index()
+                    category_dist.columns = ['Category', 'Count']
+                    
+                    fig2 = px.pie(
+                        category_dist,
+                        values='Count',
+                        names='Category',
+                        hole=0.4,
+                        color_discrete_sequence=px.colors.sequential.Blues_r
+                    )
+                    
+                    fig2.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        height=400
+                    )
+                    
+                    create_safe_plotly_chart(fig2)
+            except Exception as e:
+                st.error(f"{text['error_chart']}: {str(e)}")
+        
+        with col2:
+            st.subheader(text["profit_margin"])
+            try:
+                if 'Profit' in df_filtered.columns and 'Total_Price' in df_filtered.columns:
+                    profit_margin = df_filtered.groupby(category_column if 'category_column' in locals() else 'Category').agg({
+                        'Total_Price': 'sum',
+                        'Profit': 'sum'
+                    }).reset_index()
+                    
+                    profit_margin['Margin'] = (profit_margin['Profit'] / profit_margin['Total_Price']) * 100
+                    
+                    fig3 = go.Figure(data=[
+                        go.Bar(
+                            x=profit_margin[category_column if 'category_column' in locals() else 'Category'],
+                            y=profit_margin['Margin'],
+                            marker_color=profit_margin['Margin'],
+                            colorscale='Blues',
+                            text=[f"{x:.1f}%" for x in profit_margin['Margin']],
+                            textposition='auto'
+                        )
+                    ])
+                    
+                    fig3.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        yaxis_title="Profit Margin (%)",
+                        xaxis_title=text["category"],
+                        height=400
+                    )
+                    
+                    create_safe_plotly_chart(fig3)
+                else:
+                    st.info("Profit data not available for this chart")
+            except Exception as e:
+                st.error(f"{text['error_chart']}: {str(e)}")
+    
+    with tab3:
+        st.subheader(text["top_products"])
+        try:
+            if 'product_col' in locals() and product_col in df_filtered.columns:
+                top_products = df_filtered.groupby(product_col).agg({
+                    'Quantity': 'sum' if 'Quantity' in df_filtered.columns else pd.NamedAgg(column=value_column, aggfunc='sum'),
+                    value_column: 'sum'
+                }).nlargest(10, value_column).reset_index()
+                
+                fig4 = go.Figure(data=[
+                    go.Bar(
+                        y=top_products[product_col],
+                        x=top_products[value_column],
+                        orientation='h',
+                        marker_color='#3B82F6',
+                        text=[f"${x:,.0f}" if 'price' in value_column.lower() or 'revenue' in value_column.lower() or 'profit' in value_column.lower() else f"{x:,.0f}" 
+                              for x in top_products[value_column]],
+                        textposition='auto'
+                    )
+                ])
+                
+                fig4.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    xaxis_title=f"{value_column} ({'$' if 'price' in value_column.lower() or 'revenue' in value_column.lower() or 'profit' in value_column.lower() else 'Units'})",
+                    yaxis_title=text["products_tab"],
+                    height=500
+                )
+                
+                create_safe_plotly_chart(fig4)
+        except Exception as e:
+            st.error(f"{text['error_chart']}: {str(e)}")
+        
+        # Tabel detail produk
+        st.subheader(text["product_details"])
+        try:
+            if 'product_col' in locals() and product_col in df_filtered.columns and 'category_column' in locals() and category_column in df_filtered.columns:
+                product_detail = df_filtered.groupby([category_column, product_col]).agg({
+                    'Quantity': 'sum' if 'Quantity' in df_filtered.columns else pd.NamedAgg(column=value_column, aggfunc='count'),
+                    value_column: 'sum'
+                }).reset_index().sort_values(value_column, ascending=False).head(20)
+                
+                # Format angka
+                if 'price' in value_column.lower() or 'revenue' in value_column.lower() or 'profit' in value_column.lower():
+                    product_detail[value_column] = product_detail[value_column].apply(lambda x: f"${x:,.2f}")
+                
+                st.dataframe(
+                    product_detail,
+                    column_config={
+                        category_column: st.column_config.TextColumn(text["category"]),
+                        product_col: st.column_config.TextColumn(text["products_tab"]),
+                        "Quantity": st.column_config.NumberColumn(text["quantity"]),
+                        value_column: st.column_config.TextColumn(text["total"])
+                    },
+                    use_container_width=True,
+                    hide_index=True
+                )
+        except Exception as e:
+            st.error(f"Error displaying product table: {str(e)}")
+    
+    with tab4:
+        st.subheader(text["daily_trend"])
+        try:
+            if date_column and date_column in df_filtered.columns:
+                daily_data = df_filtered.groupby(date_column)[value_column].sum().reset_index()
+                
+                fig5 = go.Figure()
+                
+                fig5.add_trace(go.Scatter(
+                    x=daily_data[date_column],
+                    y=daily_data[value_column],
+                    mode='lines+markers',
+                    name=value_column,
+                    line=dict(color='#3B82F6', width=3),
+                    fill='tozeroy',
+                    fillcolor='rgba(59, 130, 246, 0.1)'
+                ))
+                
+                fig5.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    yaxis_title=f"{value_column} ({'$' if 'price' in value_column.lower() or 'revenue' in value_column.lower() or 'profit' in value_column.lower() else 'Units'})",
+                    xaxis_title=text["date_range"],
+                    hovermode='x unified',
+                    height=500
+                )
+                
+                create_safe_plotly_chart(fig5)
+        except Exception as e:
+            st.error(f"{text['error_chart']}: {str(e)}")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader(text["monthly"])
+            try:
+                if date_column and date_column in df_filtered.columns:
+                    df_filtered['Month'] = df_filtered[date_column].dt.strftime('%Y-%m')
+                    monthly_revenue = df_filtered.groupby('Month')[value_column].sum().reset_index()
+                    
+                    fig6 = px.bar(
+                        monthly_revenue,
+                        x='Month',
+                        y=value_column,
+                        color=value_column,
+                        color_continuous_scale='Blues'
+                    )
+                    
+                    fig6.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        height=400,
+                        xaxis_title="Month",
+                        yaxis_title=f"{value_column} ({'$' if 'price' in value_column.lower() or 'revenue' in value_column.lower() or 'profit' in value_column.lower() else 'Units'})"
+                    )
+                    
+                    create_safe_plotly_chart(fig6)
+            except Exception as e:
+                st.error(f"{text['error_chart']}: {str(e)}")
+        
+        with col2:
+            st.subheader(text["weekly"])
+            try:
+                if date_column and date_column in df_filtered.columns:
+                    df_filtered['Week'] = df_filtered[date_column].dt.isocalendar().week
+                    weekly_avg = df_filtered.groupby('Week')[value_column].mean().reset_index()
+                    
+                    fig7 = px.line(
+                        weekly_avg,
+                        x='Week',
+                        y=value_column,
+                        markers=True,
+                        line_shape='spline'
+                    )
+                    
+                    fig7.update_layout(
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        height=400,
+                        xaxis_title="Week",
+                        yaxis_title=f"Average {value_column} ({'$' if 'price' in value_column.lower() or 'revenue' in value_column.lower() or 'profit' in value_column.lower() else 'Units'})"
+                    )
+                    
+                    create_safe_plotly_chart(fig7)
+            except Exception as e:
+                st.error(f"{text['error_chart']}: {str(e)}")
+    
+    # Bagian bawah: Download data
+    st.divider()
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.subheader("📥 " + text["export"])
+        
+        # Konversi dataframe ke CSV
+        csv = df_filtered.to_csv(index=False).encode('utf-8')
+        
+        st.download_button(
+            label=text["download_csv"],
+            data=csv,
+            file_name=f"supermarket_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{language}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    # Debug panel di sidebar
+    with st.sidebar.expander("🔧 " + text["debug_info"]):
+        st.write(f"**{text['data_shape']}:** {df_filtered.shape}")
+        st.write(f"**{text['columns']}:** {list(df_filtered.columns)}")
+        if value_column:
+            st.write(f"**Value Column:** {value_column}")
+        if date_column:
+            st.write(f"**Date Column:** {date_column}")
+        st.write(f"**{text['sample_rows']}:**")
+        st.dataframe(df_filtered.head(3))
+else:
+    st.warning("⚠️ No data available. Please upload an Excel file or use sample data.")
+    st.info("""
+    **Expected Excel format:**
+    - Date column (e.g., 'Date', 'Tanggal', '日期')
+    - Value column (e.g., 'Total_Price', 'Revenue', 'Quantity')
+    - Category column (e.g., 'Category', 'Kategori', '类别')
+    - Product column (e.g., 'Product', 'Produk', '产品')
+    
+    **Sample data will be generated automatically if no file is uploaded.**
+    """)
+
+# Footer
+st.markdown("---")
+st.markdown(
+    f"""
+    <div style='text-align: center; color: #6B7280;'>
+        {text['footer'].format(date=datetime.now().strftime("%d %B %Y %H:%M"))}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Info tambahan
+with st.expander("ℹ️ How to use this dashboard"):
+    st.write("""
+    1. **Upload your Excel file** containing supermarket data
+    2. **Select your language** from the top-right dropdown
+    3. **Choose value column** (e.g., Total Price, Quantity)
+    4. **Select date column** for time series analysis
+    5. **Filter by category** and products as needed
+    6. **Navigate through tabs** to see different visualizations
+    7. **Download filtered data** as CSV for further analysis
+    
+    **Supported file formats:** Excel (.xlsx, .xls), CSV (.csv)
+    **Languages:** English, Bahasa Indonesia, 中文 (Chinese)
+    """)

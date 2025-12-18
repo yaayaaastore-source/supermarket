@@ -241,7 +241,7 @@ with col2:
 @st.cache_data
 def generate_sample_data():
     np.random.seed(42)
-    dates = pd.date_range(start='2024-01-01', end='2024-12-31', freq='D')
+    dates = pd.date_range(start='2024-01-01', end='2024-03-31', freq='D')  # Kurangi untuk performa
     
     # Multi-language categories
     categories = {
@@ -251,45 +251,39 @@ def generate_sample_data():
     }
     
     products = {
-        'Food': ['Bread', 'Milk', 'Eggs', 'Meat', 'Vegetables'],
-        'Beverages': ['Water', 'Juice', 'Coffee', 'Tea', 'Soda'],
-        'Electronics': ['Charger', 'Headphones', 'Cable', 'Battery', 'Adapter'],
-        'Clothing': ['T-Shirt', 'Pants', 'Jacket', 'Hat', 'Shoes'],
-        'Household': ['Soap', 'Toothpaste', 'Shampoo', 'Broom', 'Mop']
+        'Food': ['Bread', 'Milk', 'Eggs'],
+        'Beverages': ['Water', 'Juice', 'Coffee'],
+        'Electronics': ['Charger', 'Headphones', 'Cable'],
+        'Clothing': ['T-Shirt', 'Pants', 'Jacket'],
+        'Household': ['Soap', 'Toothpaste', 'Shampoo']
     }
     
     data = []
-    for date in dates[:100]:  # Limit to 100 days for performance
+    for date in dates:
         for category_en in categories['English']:
-            for product in products[category_en][:2]:  # 2 products per category
-                quantity = np.random.randint(1, 100)
+            for product in products[category_en]:
+                quantity = np.random.randint(1, 50)
                 unit_price = np.random.uniform(1000, 50000)
                 total_price = quantity * unit_price
                 profit = total_price * np.random.uniform(0.1, 0.4)
                 
-                # Create entry for each language
-                for lang in ['English', 'Bahasa Indonesia', '中文']:
-                    category = categories[lang][categories['English'].index(category_en)]
-                    
-                    data.append({
-                        'Date': date,
-                        'Category': category,
-                        'Product': product,
-                        'Quantity': quantity,
-                        'Unit_Price': unit_price,
-                        'Total_Price': total_price,
-                        'Profit': profit,
-                        'Month': date.strftime('%B'),
-                        'Day': date.strftime('%A'),
-                        'Week': date.isocalendar().week,
-                        'Language': lang
-                    })
+                # Create entry for selected language
+                category = categories[language][categories['English'].index(category_en)]
+                
+                data.append({
+                    'Date': date,
+                    'Category': category,
+                    'Product': product,
+                    'Quantity': quantity,
+                    'Unit_Price': unit_price,
+                    'Total_Price': total_price,
+                    'Profit': profit,
+                    'Month': date.strftime('%B'),
+                    'Day': date.strftime('%A'),
+                    'Week': date.isocalendar().week
+                })
     
     df = pd.DataFrame(data)
-    # Filter based on selected language
-    df = df[df['Language'] == language]
-    df = df.drop('Language', axis=1)
-    
     return df
 
 # Load data from uploaded file or use sample
@@ -320,6 +314,10 @@ elif use_sample:
     df = generate_sample_data()
     st.info(f"📋 {text['no_file']}")
 
+# Inisialisasi session state untuk selected_products
+if 'selected_products' not in st.session_state:
+    st.session_state.selected_products = []
+
 # Sidebar untuk filter
 with st.sidebar:
     st.header("⚙️ " + text["filter_data"])
@@ -328,11 +326,17 @@ with st.sidebar:
         # Kolom-kolom yang tersedia
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
         date_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
-        category_cols = [col for col in df.columns if df[col].dtype == 'object' and df[col].nunique() < 20]
+        object_cols = df.select_dtypes(include=['object']).columns.tolist()
+        
+        # Auto-detect kolom
+        # Cari kolom kategori (object dengan unique values < 20)
+        category_cols = [col for col in object_cols if df[col].nunique() < 20 and df[col].nunique() > 1]
+        product_cols = [col for col in object_cols if col not in category_cols and df[col].nunique() < 100]
         
         # Pilih kolom value
         default_value_col = None
-        for col in ['Total_Price', 'Revenue', 'Sales', 'Amount', 'Profit', 'Quantity']:
+        priority_cols = ['Total_Price', 'Revenue', 'Sales', 'Amount', 'Profit', 'Quantity', 'Unit_Price']
+        for col in priority_cols:
             if col in df.columns:
                 default_value_col = col
                 break
@@ -342,12 +346,13 @@ with st.sidebar:
         value_column = st.selectbox(
             text["value_column"],
             options=numeric_cols if numeric_cols else [],
-            index=0 if default_value_col in (numeric_cols if numeric_cols else []) else 0
-        )
+            index=numeric_cols.index(default_value_col) if default_value_col in numeric_cols else 0
+        ) if numeric_cols else st.selectbox(text["value_column"], options=[])
         
         # Pilih kolom date
         default_date_col = None
-        for col in ['Date', 'Tanggal', '日期', 'Transaction_Date', 'Order_Date']:
+        date_priority_cols = ['Date', 'Tanggal', '日期', 'Transaction_Date', 'Order_Date']
+        for col in date_priority_cols:
             if col in df.columns:
                 default_date_col = col
                 break
@@ -357,8 +362,8 @@ with st.sidebar:
         date_column = st.selectbox(
             text["date_column"],
             options=date_cols if date_cols else [],
-            index=0 if default_date_col in (date_cols if date_cols else []) else 0
-        )
+            index=date_cols.index(default_date_col) if default_date_col in date_cols else 0
+        ) if date_cols else st.selectbox(text["date_column"], options=[])
         
         # Filter berdasarkan tanggal
         if date_column and date_column in df.columns:
@@ -392,65 +397,68 @@ with st.sidebar:
             categories = st.multiselect(
                 text["category"],
                 options=df_filtered[category_column].unique(),
-                default=df_filtered[category_column].unique()[:5]
+                default=df_filtered[category_column].unique()[:3] if len(df_filtered[category_column].unique()) > 3 else df_filtered[category_column].unique()
             )
             
             if categories:
                 df_filtered = df_filtered[df_filtered[category_column].isin(categories)]
         
         # Filter produk dengan search
-        product_col = st.selectbox(
-            "Product Column",
-            options=[col for col in df.columns if df[col].dtype == 'object' and col != category_column] if 'category_column' in locals() else [],
-            index=0
-        ) if 'category_column' in locals() else None
-        
-        if product_col:
-            # Search box untuk produk
-            search_term = st.text_input(text["search_product"], "")
-            
-            all_products = df_filtered[product_col].unique()
-            
-            if search_term:
-                filtered_products = [p for p in all_products if search_term.lower() in str(p).lower()]
-            else:
-                filtered_products = all_products
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button(text["select_all"]):
-                    st.session_state.selected_products = filtered_products
-            with col2:
-                if st.button(text["clear_all"]):
-                    st.session_state.selected_products = []
-            
-            if 'selected_products' not in st.session_state:
-                st.session_state.selected_products = []
-            
-            selected_products = st.multiselect(
-                text["products"],
-                options=filtered_products,
-                default=st.session_state.selected_products
+        if product_cols:
+            product_column = st.selectbox(
+                "Product Column",
+                options=product_cols,
+                index=0
             )
             
-            if selected_products:
-                df_filtered = df_filtered[df_filtered[product_col].isin(selected_products)]
+            if product_column:
+                # Search box untuk produk
+                search_term = st.text_input(text["search_product"], "")
+                
+                all_products = df_filtered[product_column].unique()
+                
+                if search_term:
+                    filtered_products = [p for p in all_products if search_term.lower() in str(p).lower()]
+                else:
+                    filtered_products = all_products
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button(text["select_all"]):
+                        st.session_state.selected_products = list(filtered_products)
+                with col2:
+                    if st.button(text["clear_all"]):
+                        st.session_state.selected_products = []
+                
+                selected_products = st.multiselect(
+                    text["products"],
+                    options=filtered_products,
+                    default=st.session_state.selected_products
+                )
+                
+                if selected_products:
+                    df_filtered = df_filtered[df_filtered[product_column].isin(selected_products)]
     else:
         st.warning("No data available. Please upload a file or use sample data.")
         df_filtered = pd.DataFrame()
 
-# Fungsi untuk membuat grafik dengan error handling
+# Fungsi untuk membuat grafik dengan error handling - FIXED VERSION
 def create_safe_plotly_chart(fig, chart_title=""):
     """Fungsi aman untuk membuat plotly chart dengan error handling"""
     try:
         if fig is None:
             raise ValueError("Figure is None")
         
-        if not isinstance(fig, (go.Figure, px._figure.Figure)):
-            raise TypeError(f"Object must be Plotly Figure, not {type(fig)}")
-        
-        if isinstance(fig, px._figure.Figure):
-            fig = go.Figure(fig)
+        # PERBAIKAN: Gunang isinstance yang benar untuk plotly Figure
+        if not isinstance(fig, (go.Figure)):
+            # Coba konversi jika itu adalah plotly express figure
+            try:
+                if hasattr(fig, '_graph_obj'):
+                    fig = go.Figure(fig)
+                else:
+                    raise TypeError(f"Object must be Plotly Figure, not {type(fig)}")
+            except:
+                raise TypeError(f"Object must be Plotly Figure, not {type(fig)}")
         
         if chart_title:
             fig.update_layout(title=chart_title)
@@ -468,6 +476,10 @@ def create_safe_plotly_chart(fig, chart_title=""):
             <small>{text['refresh_page']}</small>
         </div>
         """, unsafe_allow_html=True)
+        # Debug info
+        with st.expander("Technical Details"):
+            st.write(f"Error type: {type(e).__name__}")
+            st.write(f"Figure type: {type(fig) if 'fig' in locals() else 'N/A'}")
 
 # Main dashboard hanya jika ada data
 if df_filtered is not None and not df_filtered.empty:
@@ -507,10 +519,10 @@ if df_filtered is not None and not df_filtered.empty:
             )
         
         with col4:
-            if 'product_col' in locals() and product_col:
-                unique_products = df_filtered[product_col].nunique()
+            if 'product_column' in locals() and product_column in df_filtered.columns:
+                unique_products = df_filtered[product_column].nunique()
             else:
-                unique_products = 0
+                unique_products = df_filtered.select_dtypes(include=['object']).iloc[:, 0].nunique() if len(df_filtered.select_dtypes(include=['object']).columns) > 0 else 0
             st.metric(
                 label=text["unique_products"],
                 value=f"{unique_products}",
@@ -557,6 +569,7 @@ if df_filtered is not None and not df_filtered.empty:
                     category_dist = df_filtered[category_column].value_counts().reset_index()
                     category_dist.columns = ['Category', 'Count']
                     
+                    # PERBAIKAN: Gunang px.pie langsung, tidak perlu konversi
                     fig2 = px.pie(
                         category_dist,
                         values='Count',
@@ -614,15 +627,14 @@ if df_filtered is not None and not df_filtered.empty:
     with tab3:
         st.subheader(text["top_products"])
         try:
-            if 'product_col' in locals() and product_col in df_filtered.columns:
-                top_products = df_filtered.groupby(product_col).agg({
-                    'Quantity': 'sum' if 'Quantity' in df_filtered.columns else pd.NamedAgg(column=value_column, aggfunc='sum'),
+            if 'product_column' in locals() and product_column in df_filtered.columns:
+                top_products = df_filtered.groupby(product_column).agg({
                     value_column: 'sum'
                 }).nlargest(10, value_column).reset_index()
                 
                 fig4 = go.Figure(data=[
                     go.Bar(
-                        y=top_products[product_col],
+                        y=top_products[product_column],
                         x=top_products[value_column],
                         orientation='h',
                         marker_color='#3B82F6',
@@ -647,9 +659,8 @@ if df_filtered is not None and not df_filtered.empty:
         # Tabel detail produk
         st.subheader(text["product_details"])
         try:
-            if 'product_col' in locals() and product_col in df_filtered.columns and 'category_column' in locals() and category_column in df_filtered.columns:
-                product_detail = df_filtered.groupby([category_column, product_col]).agg({
-                    'Quantity': 'sum' if 'Quantity' in df_filtered.columns else pd.NamedAgg(column=value_column, aggfunc='count'),
+            if 'product_column' in locals() and product_column in df_filtered.columns and 'category_column' in locals() and category_column in df_filtered.columns:
+                product_detail = df_filtered.groupby([category_column, product_column]).agg({
                     value_column: 'sum'
                 }).reset_index().sort_values(value_column, ascending=False).head(20)
                 
@@ -661,8 +672,7 @@ if df_filtered is not None and not df_filtered.empty:
                     product_detail,
                     column_config={
                         category_column: st.column_config.TextColumn(text["category"]),
-                        product_col: st.column_config.TextColumn(text["products_tab"]),
-                        "Quantity": st.column_config.NumberColumn(text["quantity"]),
+                        product_column: st.column_config.TextColumn(text["products_tab"]),
                         value_column: st.column_config.TextColumn(text["total"])
                     },
                     use_container_width=True,
@@ -711,6 +721,7 @@ if df_filtered is not None and not df_filtered.empty:
                     df_filtered['Month'] = df_filtered[date_column].dt.strftime('%Y-%m')
                     monthly_revenue = df_filtered.groupby('Month')[value_column].sum().reset_index()
                     
+                    # PERBAIKAN: Gunang px.bar langsung
                     fig6 = px.bar(
                         monthly_revenue,
                         x='Month',
@@ -738,6 +749,7 @@ if df_filtered is not None and not df_filtered.empty:
                     df_filtered['Week'] = df_filtered[date_column].dt.isocalendar().week
                     weekly_avg = df_filtered.groupby('Week')[value_column].mean().reset_index()
                     
+                    # PERBAIKAN: Gunang px.line langsung
                     fig7 = px.line(
                         weekly_avg,
                         x='Week',
@@ -784,6 +796,10 @@ if df_filtered is not None and not df_filtered.empty:
             st.write(f"**Value Column:** {value_column}")
         if date_column:
             st.write(f"**Date Column:** {date_column}")
+        if 'category_column' in locals():
+            st.write(f"**Category Column:** {category_column}")
+        if 'product_column' in locals():
+            st.write(f"**Product Column:** {product_column}")
         st.write(f"**{text['sample_rows']}:**")
         st.dataframe(df_filtered.head(3))
 else:
